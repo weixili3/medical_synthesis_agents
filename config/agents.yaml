@@ -1,0 +1,74 @@
+# Agent configuration for the Content Intelligence Pipeline
+# Override any value via environment variables or pipeline.yaml
+
+research_agent:
+  name: Research Agent
+  description: Gathers information from Google Search, web scraping, and PubMed
+  model: gemini-2.0-flash
+  temperature: 0.1
+  max_retries: 3
+  tools:
+    - google_search
+    - web_scrape
+    - query_medical_database
+  settings:
+    max_search_results: 6
+    max_scrape_chars: 3000
+    pubmed_max_results: 5
+
+analysis_agent:
+  name: Analysis Agent
+  description: Synthesises research findings and extracts structured insights
+  model: gemini-2.0-flash
+  temperature: 0.1
+  max_retries: 3
+  tools:
+    - analyze_evidence
+    - calculate_statistics
+    - create_bar_chart
+  settings:
+    min_key_findings: 5
+
+writing_agent:
+  name: Writing Agent
+  description: Composes structured markdown reports using Jinja2 templates
+  model: gemini-2.0-flash
+  temperature: 0.2
+  max_retries: 3
+  tools:
+    - generate_report_from_template
+    - format_citation
+    - extract_markdown_section
+  settings:
+    citation_style: APA
+    min_report_words: 800
+
+quality_agent:
+  name: Quality Agent
+  description: Reviews reports for readability, completeness, grammar, and relevancy
+  model: gemini-2.0-flash
+  temperature: 0.0
+  max_retries: 3
+  tools:
+    - check_readability
+    - check_completeness
+    - check_grammar
+    - check_relevancy
+  settings:
+    approval_threshold: 0.70
+    min_completeness_score: 0.75
+    weights:
+      completeness: 0.35
+      relevancy: 0.35
+      readability: 0.15
+      grammar: 0.15
+
+coordinator:
+  name: Coordinator Agent
+  description: Orchestrates the pipeline workflow and detects content type
+  content_types:
+    - clinical_evidence
+    - market_report
+    - technology_analysis
+    - policy_brief
+    - general

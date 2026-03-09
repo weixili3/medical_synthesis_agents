@@ -1,0 +1,41 @@
+# Core LangGraph & LangChain
+langgraph>=0.2.55
+langchain>=0.3.14
+langchain-core>=0.3.28
+langchain-google-genai>=2.0.7
+langchain-community>=0.3.14
+
+# Search Tools
+google-api-python-client>=2.154.0
+requests>=2.32.3
+beautifulsoup4>=4.12.3
+lxml>=5.3.0
+
+# Data Analysis & Statistics
+pandas>=2.2.3
+scipy>=1.14.1
+matplotlib>=3.9.4
+numpy>=2.2.1
+
+# Document Writing & Templates
+jinja2>=3.1.5
+markdown>=3.7
+
+# Quality & Text Analysis
+textstat>=0.7.4
+language-tool-python>=2.8.1
+
+# Configuration & Utilities
+python-dotenv>=1.0.1
+pyyaml>=6.0.2
+rich>=13.9.4
+
+# Web API
+fastapi>=0.115.0
+uvicorn[standard]>=0.32.0
+python-multipart>=0.0.12
+
+# Testing
+pytest>=8.3.4
+pytest-asyncio>=0.24.0
+pytest-mock>=3.14.0

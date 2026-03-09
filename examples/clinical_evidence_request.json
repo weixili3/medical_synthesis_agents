@@ -1,0 +1,24 @@
+{
+  "request": "Create a comprehensive clinical evidence synthesis for the effectiveness of telemedicine interventions in managing Type 2 diabetes",
+  "config": {
+    "max_iterations": 3,
+    "thread_id": "clinical-telemedicine-001"
+  },
+  "metadata": {
+    "description": "Primary showcase example — clinical evidence report",
+    "expected_content_type": "clinical_evidence",
+    "expected_sections": [
+      "Executive Summary",
+      "Introduction",
+      "Methodology",
+      "Key Findings",
+      "Evidence Analysis",
+      "Discussion",
+      "Conclusions",
+      "Limitations",
+      "References"
+    ],
+    "expected_quality_score_min": 0.70,
+    "notes": "This example exercises all five pipeline agents and is the canonical demo request."
+  }
+}

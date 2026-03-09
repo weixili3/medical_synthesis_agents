@@ -1,0 +1,40 @@
+# Pipeline-level configuration for the Content Intelligence Pipeline
+
+pipeline:
+  name: Content Intelligence Pipeline
+  version: "1.0.0"
+  description: Multi-agent orchestration system for content research and synthesis
+
+  # Workflow settings
+  max_iterations: 3          # Maximum quality-revision cycles before forced approval
+  thread_id: default         # LangGraph checkpointer thread identifier
+  log_level: INFO            # DEBUG | INFO | WARNING | ERROR
+
+  # Output settings
+  output_dir: ./outputs      # Directory for saving generated reports
+  save_visualisations: true  # Save matplotlib charts to output_dir
+
+# LLM settings (applied globally; per-agent overrides are in agents.yaml)
+llm:
+  provider: google_gemini
+  default_model: gemini-2.0-flash
+  fallback_model: gemini-1.5-flash
+  timeout_seconds: 120
+
+# Routing thresholds
+routing:
+  quality_approval_threshold: 0.70
+  min_completeness_score: 0.75
+
+# Retry / error handling
+resilience:
+  max_tool_retries: 3
+  tool_retry_delay_seconds: 2
+  node_error_policy: continue   # continue | abort
+
+# Observability
+observability:
+  log_tool_calls: true
+  log_agent_decisions: true
+  log_state_transitions: true
+  rich_output: true             # Use Rich for coloured terminal output
