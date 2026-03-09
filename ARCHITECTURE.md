@@ -357,7 +357,157 @@ secrets manager).
 
 ---
 
-## 10. Scalability Considerations
+## 10. Frontend Architecture
+
+### 10.1 Overview
+
+The frontend is a single-page application (SPA) built with React 18, TypeScript,
+Vite, and Tailwind CSS. It lives in `src/frontend/` and communicates with the
+FastAPI backend exclusively through two API calls: a REST POST to start a run
+and a Server-Sent Events (SSE) stream to receive real-time updates.
+
+```
+Browser
+  │
+  ├── POST /api/run  ────────────────────────────────► FastAPI
+  │        { question }                                 returns { thread_id }
+  │
+  └── GET  /api/stream/{thread_id}  ─── SSE ──────────► FastAPI
+           ← update events
+           ← tool_call events
+           ← pipeline_complete
+           ← pipeline_error
+```
+
+In development, Vite's dev server (port 3000) proxies `/api/*` to the FastAPI
+backend at port 8000, so the frontend never needs to know the backend URL. In
+production, FastAPI serves the compiled `dist/` folder directly (see
+`src/api/main.py`), making the entire app a single-origin deployment.
+
+---
+
+### 10.2 State Machine (`App.tsx`)
+
+All application state is managed by a single `useReducer` in `App.tsx`. The
+reducer is the only place state transitions happen — components are pure
+functions of state.
+
+**State shape (`AppState`):**
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `status` | `"idle" \| "running" \| "complete" \| "rejected" \| "error"` | Current pipeline lifecycle phase |
+| `threadId` | `string \| null` | Active run identifier |
+| `agents` | `Record<AgentName, AgentState>` | Per-agent status + tool call log |
+| `finalReport` | `string` | Markdown report text |
+| `qualityScore` | `number` | 0–1 composite quality score |
+| `isApproved` | `boolean` | Whether quality gate passed |
+| `tokenSummary` | `TokenSummary \| null` | Live token usage per agent |
+| `rejectionMessage` | `string \| null` | Out-of-scope or clarification message |
+| `pipelineErrors` | `string[]` | Non-fatal warnings accumulated during run |
+
+**Transitions:**
+
+```
+RESET ──────────────────────────────────────────► idle
+START (POST /api/run returns thread_id) ────────► running
+UPDATE (SSE: coordinator_decision / agent_complete) stays running, mutates agents[]
+TOOL_CALL (SSE: tool start/end) ────────────────► appends to agent.toolCalls[]
+COMPLETE (SSE: pipeline_complete) ──────────────► complete | rejected | error
+ERROR (SSE: pipeline_error / network drop) ─────► error
+```
+
+Each agent entry has its own sub-status (`"idle" | "running" | "complete"`).
+The coordinator dispatches the next agent by updating `coordinator_next_action`,
+which the `UPDATE` reducer uses to set that agent's status to `"running"`.
+
+---
+
+### 10.3 SSE Subscription (`App.tsx` — `useEffect`)
+
+The `useEffect` hook fires whenever `threadId` changes (i.e. once per new run).
+It opens a native `EventSource` connection and registers named event listeners:
+
+| SSE event name | Action dispatched | Effect |
+|----------------|-------------------|--------|
+| `update` | `UPDATE` | Updates agent statuses and token summary |
+| `tool_call` | `TOOL_CALL` | Appends or updates a tool call entry in the agent card |
+| `pipeline_complete` | `COMPLETE` | Populates final report, metrics, closes stream |
+| `pipeline_error` | `ERROR` | Sets error message, closes stream |
+| `stream_end` | — | Closes `EventSource` cleanly |
+
+The cleanup function returned by `useEffect` calls `es.close()`, ensuring the
+SSE connection is torn down if the component unmounts or the user starts a new
+run.
+
+---
+
+### 10.4 Component Breakdown
+
+```
+App.tsx  (state, SSE subscription, layout)
+│
+├── QueryInput.tsx
+│     Controlled textarea + submit button. Disabled while status === "running".
+│     Calls props.onSubmit(question) → App calls POST /api/run.
+│
+├── AgentCard.tsx  (rendered once per agent via AGENT_NAMES map)
+│     Shows agent name, status badge (idle / running / complete), and a
+│     collapsible tool call log. Each tool call entry shows the tool name,
+│     input arguments, and output (once available from the "end" phase event).
+│
+├── MetricsPanel.tsx
+│     Right-column panel. Displays quality score (0–100%), evidence grade,
+│     approval status, and a per-agent token usage breakdown from tokenSummary.
+│     All values update live as SSE events arrive.
+│
+└── FinalReport.tsx
+      Renders draft_report as GitHub-Flavoured Markdown via react-markdown +
+      remark-gfm. Displays the citations list below the report body.
+      Only mounted when state.finalReport is non-empty.
+```
+
+---
+
+### 10.5 API Client (`src/api/client.ts`)
+
+Two thin functions wrap all network calls:
+
+```typescript
+// Start a pipeline run; returns the thread_id
+startRun({ question, max_iterations?, max_retries_per_phase? }): Promise<string>
+
+// Open an SSE stream for a running pipeline
+openStream(threadId: string): EventSource
+```
+
+The `BASE = "/api"` constant means all requests are relative to the current
+origin — no hardcoded host — which works identically in dev (proxied by Vite)
+and production (served by FastAPI).
+
+---
+
+### 10.6 Build and Serving
+
+**Development:**
+```
+Browser :3000  ──► Vite dev server (HMR)
+                       └── /api/* proxy ──► FastAPI :8000
+```
+
+**Production:**
+```
+Browser  ──► FastAPI :8000
+               ├── /api/*  ──► APIRouter (routes.py)
+               └── /*      ──► StaticFiles(src/frontend/dist/)
+```
+
+`src/api/main.py` mounts the `dist/` directory only if it exists, so the
+backend starts cleanly without a frontend build (CLI / test environments).
+
+---
+
+## 11. Scalability Considerations
 
 | Dimension | Current | Recommended for Production |
 |-----------|---------|---------------------------|
