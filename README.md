@@ -112,11 +112,38 @@ producing a direct response before gathering data.
 
 ---
 
+## Frontend
+
+The project includes a React + TypeScript web UI that provides a real-time dashboard for submitting research requests and watching the pipeline run.
+
+**Stack:** React 18, TypeScript, Vite, Tailwind CSS, `react-markdown`
+
+**Key components:**
+
+| Component | Description |
+|-----------|-------------|
+| `QueryInput` | Text area for submitting a clinical research question |
+| `AgentCard` | Live status card per agent (idle → running → complete), with tool call log |
+| `MetricsPanel` | Right-panel showing quality score, evidence grade, and token usage |
+| `FinalReport` | Rendered markdown report with citation list |
+
+**How it communicates with the backend:**
+
+1. On submit, the UI POSTs to `POST /api/run` → receives a `thread_id`.
+2. It immediately opens a Server-Sent Events connection at `GET /api/stream/{thread_id}`.
+3. The backend pushes `update`, `tool_call`, `pipeline_complete`, and `pipeline_error` events in real time.
+4. The UI state machine (React `useReducer`) transitions through `idle → running → complete / rejected / error`.
+
+In development, Vite proxies all `/api` requests to `http://localhost:8000`, so you only need to run the two servers below.
+
+---
+
 ## Setup Instructions
 
 ### Prerequisites
 
 - Python 3.11 or later
+- Node.js 18+ and npm (for the frontend)
 - A Google Cloud project with:
   - **Gemini API** enabled (`GOOGLE_API_KEY`) — free tier available
   - **Custom Search JSON API** enabled (`GOOGLE_SEARCH_API_KEY` + `GOOGLE_SEARCH_ENGINE_ID`)
@@ -205,7 +232,53 @@ python -c "from src.pipeline import build_pipeline; print('OK')"
 
 ---
 
-## Usage Examples
+## Running the Application
+
+### Development mode (backend + frontend separately)
+
+**Terminal 1 — FastAPI backend (port 8000):**
+
+```bash
+uvicorn src.api.main:app --reload --host 0.0.0.0 --port 8000
+```
+
+**Terminal 2 — Vite dev server (port 3000):**
+
+```bash
+cd src/frontend
+npm install        # first time only
+npm run dev
+```
+
+Then open [http://localhost:3000](http://localhost:3000) in your browser.
+The Vite dev server proxies all `/api` requests to the FastAPI backend automatically.
+
+### Production mode (single server)
+
+Build the frontend once, then serve everything from FastAPI:
+
+```bash
+cd src/frontend
+npm install
+npm run build          # outputs to src/frontend/dist/
+cd ../..
+uvicorn src.api.main:app --host 0.0.0.0 --port 8000
+```
+
+FastAPI automatically detects and serves the compiled static files from `src/frontend/dist/` at `/`, so the entire app is available at [http://localhost:8000](http://localhost:8000).
+
+### API endpoints (standalone / programmatic use)
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| `POST` | `/api/run` | Start a pipeline run; returns `{ thread_id }` |
+| `GET` | `/api/stream/{thread_id}` | SSE stream of real-time events |
+| `GET` | `/api/result/{thread_id}` | Fetch the final result after completion |
+| `GET` | `/api/health` | Liveness check |
+
+---
+
+## Usage Examples (CLI)
 
 ### Run the primary clinical evidence example
 
@@ -376,8 +449,23 @@ research_agents/
 │   │   ├── agent_runner.py      # run_agent_with_forced_tools (forced first-turn tool call)
 │   │   ├── streaming_callback.py# ToolStreamingCallback for SSE streaming (API server)
 │   │   └── token_tracker.py     # TokenTrackingCallback for usage/cost tracking (API server)
-│   └── api/
-│       └── routes.py            # FastAPI REST + SSE streaming endpoints
+│   ├── api/
+│   │   ├── main.py              # FastAPI app — CORS, static file serving
+│   │   ├── routes.py            # REST + SSE streaming endpoints
+│   │   └── models.py            # Pydantic request/response models
+│   └── frontend/                # React + TypeScript web UI
+│       ├── src/
+│       │   ├── App.tsx          # Root component, SSE subscription, reducer
+│       │   ├── types.ts         # Shared TypeScript types
+│       │   ├── api/client.ts    # startRun() and openStream() helpers
+│       │   └── components/
+│       │       ├── QueryInput.tsx    # Research question input form
+│       │       ├── AgentCard.tsx     # Per-agent status + tool call log
+│       │       ├── MetricsPanel.tsx  # Quality score, evidence grade, tokens
+│       │       └── FinalReport.tsx   # Rendered markdown report + citations
+│       ├── package.json         # npm dependencies (React, Vite, Tailwind)
+│       ├── vite.config.ts       # Dev server on :3000, proxies /api → :8000
+│       └── dist/                # Built output (created by npm run build)
 ├── tests/
 │   ├── README.md                # Test coverage breakdown and run instructions
 │   ├── test_tools.py            # Unit tests for all tool functions (mocked I/O)

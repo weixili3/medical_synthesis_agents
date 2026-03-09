@@ -1,0 +1,37 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  html {
+    font-family: "Inter", system-ui, -apple-system, sans-serif;
+  }
+}
+
+/* Markdown report styles */
+.prose h1 { @apply text-2xl font-bold text-gray-900 mt-6 mb-3; }
+.prose h2 { @apply text-xl font-semibold text-gray-800 mt-5 mb-2; }
+.prose h3 { @apply text-lg font-semibold text-gray-700 mt-4 mb-2; }
+.prose p  { @apply text-gray-700 leading-relaxed mb-3; }
+.prose ul { @apply list-disc list-inside mb-3 space-y-1; }
+.prose ol { @apply list-decimal list-inside mb-3 space-y-1; }
+.prose li { @apply text-gray-700; }
+.prose strong { @apply font-semibold text-gray-900; }
+.prose em { @apply italic; }
+.prose blockquote { @apply border-l-4 border-blue-300 pl-4 text-gray-600 italic; }
+.prose table { @apply w-full text-sm border-collapse mb-4; }
+.prose th { @apply bg-gray-100 font-semibold text-gray-700 text-left px-3 py-2 border border-gray-200; }
+.prose td { @apply text-gray-700 px-3 py-2 border border-gray-200; }
+.prose tr:nth-child(even) td { @apply bg-gray-50; }
+.prose hr { @apply border-gray-200 my-6; }
+.prose code { @apply bg-gray-100 px-1 py-0.5 rounded text-sm font-mono text-gray-800; }
+.prose pre { @apply bg-gray-900 text-gray-100 p-4 rounded-lg overflow-x-auto mb-4; }
+.prose pre code { @apply bg-transparent p-0 text-gray-100; }
+
+/* Animated status pulse */
+@keyframes pulse-ring {
+  0% { transform: scale(0.95); opacity: 0.7; }
+  50% { transform: scale(1.05); opacity: 1; }
+  100% { transform: scale(0.95); opacity: 0.7; }
+}
+.animate-pulse-ring { animation: pulse-ring 1.4s ease-in-out infinite; }
